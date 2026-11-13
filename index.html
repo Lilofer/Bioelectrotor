@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioElectroTor - Catastro & Evaluación de Relaves Chile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { darkbg: '#0f172a', cardbg: '#1e293b' } } } }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-bolt text-yellow-400 text-2xl"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide text-white">BioElectroTor <span class="text-xs bg-cyan-950 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded ml-2">v3.0 Pro</span></h1>
+                    <p class="text-xs text-slate-400">Plataforma Interdisciplinaria de Evaluación Geo-Electroquímica y Matriz Social de Relaves</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <label for="input-excel-sernageomin" class="bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer font-medium px-3 py-1.5 rounded text-xs transition flex items-center gap-1.5 shadow border border-slate-700">
+                    <i class="fa-solid fa-file-import text-cyan-400"></i> Importar CSV / Excel
+                </label>
+                <input type="file" id="input-excel-sernageomin" accept=".csv, .xlsx, .xls" class="hidden">
+
+                <button id="btn-open-modal" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-3 py-1.5 rounded text-xs transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-plus"></i> Agregar Relave
+                </button>
+                <button id="btn-export-excel" class="bg-emerald-700 hover:bg-emerald-600 text-white font-medium px-3 py-1.5 rounded text-xs transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-file-excel text-emerald-200"></i> Excel
+                </button>
+                <button id="btn-export-pdf" class="bg-rose-700 hover:bg-rose-600 text-white font-medium px-3 py-1.5 rounded text-xs transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-file-pdf text-rose-200"></i> PDF
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Sidebar Controles -->
+        <aside class="lg:col-span-1 bg-cardbg p-5 rounded-xl border border-slate-800 flex flex-col gap-5 shadow-lg h-fit">
+            <div>
+                <label for="relave-select" class="block text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-mountain mr-1"></i> Depósito Seleccionado
+                </label>
+                <div class="flex gap-1.5 mb-3">
+                    <select id="relave-select" class="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none transition"></select>
+                    <button id="btn-delete-selected" title="Eliminar depósito seleccionado" class="bg-rose-950/70 hover:bg-rose-800 text-rose-300 hover:text-white border border-rose-800/60 px-3 rounded-lg transition flex items-center justify-center">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-2 bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                    <p class="text-[11px] font-bold text-slate-300 uppercase"><i class="fa-solid fa-filter text-cyan-400 mr-1"></i> Filtros Catastro</p>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-0.5">Tipología Depósito</label>
+                        <select id="filter-tipologia" class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded p-1.5 text-xs">
+                            <option value="TODAS">Todas las tipologías</option>
+                            <option value="Tranque">Tranque de Relave</option>
+                            <option value="Embalse">Embalse de Relave</option>
+                            <option value="Pasta">Depósito en Pasta</option>
+                            <option value="Filtrado">Relave Filtrado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-0.5">Riesgo Estructural</label>
+                        <select id="filter-riesgo" class="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded p-1.5 text-xs">
+                            <option value="TODOS">Todos los niveles</option>
+                            <option value="Bajo">Bajo</option>
+                            <option value="Medio">Medio</option>
+                            <option value="Alto">Alto / Crítico</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mt-3">
+                    <span id="badge-region" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">Región</span>
+                    <button id="btn-reset-storage" class="text-[10px] text-slate-400 hover:text-rose-400 underline"><i class="fa-solid fa-rotate-left"></i> Restablecer DB</button>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <div>
+                <h3 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-3">Modelo Electroquímico</h3>
+                <div class="mb-3">
+                    <label class="block text-xs text-slate-300 mb-1">Matriz Energética</label>
+                    <select id="select-energia" class="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded p-2 text-xs">
+                        <option value="red">Red Eléctrica SEN (0.45 kg CO₂/kWh)</option>
+                        <option value="solar">100% Solar Fotovoltaica (0.05 kg CO₂/kWh)</option>
+                        <option value="hibrida">Matriz Híbrida Renovable (0.22 kg CO₂/kWh)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs text-slate-300 mb-1"><span>Conductividad</span><span id="val-conductividad" class="font-bold text-cyan-400 font-mono">15 mS/cm</span></div>
+                    <input type="range" id="slider-conductividad" min="5" max="40" step="1" value="15" class="w-full accent-cyan-400 bg-slate-900 cursor-pointer">
+                </div>
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs text-slate-300 mb-1"><span>Potencial Redox (Eh)</span><span id="val-eh" class="font-bold text-amber-400 font-mono">450 mV</span></div>
+                    <input type="range" id="slider-eh" min="100" max="800" step="10" value="450" class="w-full accent-amber-400 bg-slate-900 cursor-pointer">
+                </div>
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs text-slate-300 mb-1"><span>Densidad Corriente</span><span id="val-corriente" class="font-bold text-emerald-400 font-mono">120 A/m²</span></div>
+                    <input type="range" id="slider-corriente" min="50" max="300" step="5" value="120" class="w-full accent-emerald-400 bg-slate-900 cursor-pointer">
+                </div>
+                <div class="mb-2">
+                    <div class="flex justify-between text-xs text-slate-300 mb-1"><span>Recirculación Agua</span><span id="val-agua" class="font-bold text-cyan-400 font-mono">85%</span></div>
+                    <input type="range" id="slider-agua" min="50" max="98" step="1" value="85" class="w-full accent-cyan-400 bg-slate-900 cursor-pointer">
+                </div>
+            </div>
+        </aside>
+
+        <!-- Dashboard Central -->
+        <section class="lg:col-span-3 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-cardbg p-4 rounded-xl border border-slate-800 flex items-center space-x-4 shadow relative overflow-hidden">
+                    <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-cyan-500"></div>
+                    <div class="p-3 bg-cyan-950 text-cyan-400 rounded-lg border border-cyan-800/40"><i class="fa-solid fa-bolt-lightning text-2xl"></i></div>
+                    <div><p class="text-xs text-slate-400 font-medium">Energía Total</p><h3 id="kpi-energia" class="text-2xl font-bold text-white">0.0 <span class="text-xs text-slate-400 font-normal">kWh/t</span></h3></div>
+                </div>
+                <div class="bg-cardbg p-4 rounded-xl border border-slate-800 flex items-center space-x-4 shadow relative overflow-hidden">
+                    <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-blue-500"></div>
+                    <div class="p-3 bg-blue-950 text-blue-400 rounded-lg border border-blue-800/40"><i class="fa-solid fa-droplet text-2xl"></i></div>
+                    <div><p class="text-xs text-slate-400 font-medium">Agua Fresca</p><h3 id="kpi-agua" class="text-2xl font-bold text-white">0.00 <span class="text-xs text-slate-400 font-normal">m³/t</span></h3></div>
+                </div>
+                <div class="bg-cardbg p-4 rounded-xl border border-slate-800 flex items-center space-x-4 shadow relative overflow-hidden">
+                    <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-emerald-500"></div>
+                    <div class="p-3 bg-emerald-950 text-emerald-400 rounded-lg border border-emerald-800/40"><i class="fa-solid fa-cloud text-2xl"></i></div>
+                    <div><p class="text-xs text-slate-400 font-medium">Emisiones CO₂</p><h3 id="kpi-co2" class="text-2xl font-bold text-white">0.0 <span class="text-xs text-slate-400 font-normal">kg/t</span></h3></div>
+                </div>
+                <div class="bg-cardbg p-4 rounded-xl border border-slate-800 flex items-center space-x-4 shadow relative overflow-hidden">
+                    <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-amber-500"></div>
+                    <div class="p-3 bg-amber-950 text-amber-400 rounded-lg border border-amber-800/40"><i class="fa-solid fa-chart-line text-2xl"></i></div>
+                    <div><p class="text-xs text-slate-400 font-medium">Ahorro vs Conv.</p><h3 id="kpi-ahorro" class="text-2xl font-bold text-amber-400">0%</h3></div>
+                </div>
+            </div>
+
+            <!-- Pestañas -->
+            <div class="bg-cardbg rounded-xl border border-slate-800 shadow-lg overflow-hidden">
+                <div class="flex border-b border-slate-800 bg-slate-900/50 overflow-x-auto">
+                    <button class="tab-btn active text-cyan-400 border-b-2 border-cyan-400 px-5 py-3 font-medium text-sm flex items-center gap-2 whitespace-nowrap" data-tab="tab-minas"><i class="fa-solid fa-cubes"></i> Ing. Civil de Minas</button>
+                    <button class="tab-btn text-slate-400 border-b-2 border-transparent px-5 py-3 font-medium text-sm flex items-center gap-2 hover:text-slate-200 whitespace-nowrap" data-tab="tab-procesos"><i class="fa-solid fa-microchip"></i> BioElectroTor Procesos</button>
+                    <button class="tab-btn text-slate-400 border-b-2 border-transparent px-5 py-3 font-medium text-sm flex items-center gap-2 hover:text-slate-200 whitespace-nowrap" data-tab="tab-riesgos"><i class="fa-solid fa-shield-cat"></i> Prevención & Matriz Social</button>
+                    <button class="tab-btn text-slate-400 border-b-2 border-transparent px-5 py-3 font-medium text-sm flex items-center gap-2 hover:text-slate-200 whitespace-nowrap" data-tab="tab-comparacion"><i class="fa-solid fa-scale-balanced"></i> Comparativa vs Convencional</button>
+                </div>
+
+                <div class="p-5">
+                    <!-- TAB 1 -->
+                    <div id="tab-minas" class="tab-content">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-sm font-semibold text-slate-200 mb-3">Caracterización Geotécnica y Mineralógica</h4>
+                                <table class="w-full text-left text-xs border-collapse">
+                                    <tbody>
+                                        <tr class="border-b border-slate-800"><td class="py-2.5 text-slate-400">Estado / Tipología</td><td id="m-estado" class="py-2.5 font-bold text-slate-100">-</td></tr>
+                                        <tr class="border-b border-slate-800"><td class="py-2.5 text-slate-400">Tonelaje Depositado</td><td id="m-tonelaje" class="py-2.5 font-bold text-slate-100">-</td></tr>
+                                        <tr class="border-b border-slate-800"><td class="py-2.5 text-slate-400">Concentración Sólidos (%Cp)</td><td id="m-solidos" class="py-2.5 font-bold text-slate-100">-</td></tr>
+                                        <tr class="border-b border-slate-800"><td class="py-2.5 text-slate-400">Densidad de Pulpa (t/m³)</td><td id="m-densidad" class="py-2.5 font-bold text-slate-100">-</td></tr>
+                                        <tr class="border-b border-slate-800"><td class="py-2.5 text-slate-400">pH Natural</td><td id="m-ph" class="py-2.5 font-bold text-slate-100">-</td></tr>
+                                        <tr class="border-b border-slate-800"><td class="py-2.5 text-slate-400">Ley Cu / Fe / Au</td><td id="m-leyes" class="py-2.5 font-bold text-cyan-400">-</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-800 flex flex-col">
+                                <h4 class="text-xs font-semibold text-slate-300 mb-2">Composición Leyes Principales</h4>
+                                <div class="relative flex-grow h-56"><canvas id="chart-leyes"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2 -->
+                    <div id="tab-procesos" class="tab-content hidden">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="space-y-3">
+                                <div class="bg-slate-900 p-3.5 rounded-lg border border-slate-800">
+                                    <div class="flex justify-between text-xs mb-1.5"><span class="text-slate-400">Desgaste Electrodo Carbón:</span><span id="p-electrodo" class="font-bold text-amber-400 font-mono">0.0 kg/t</span></div>
+                                    <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden"><div id="bar-electrodo" class="bg-amber-500 h-2 rounded-full transition-all" style="width: 50%"></div></div>
+                                </div>
+                                <div class="bg-slate-900 p-3.5 rounded-lg border border-slate-800"><div class="flex justify-between text-xs mb-1"><span class="text-slate-400">Voltaje Óptimo Celda:</span><span id="p-voltaje" class="font-bold text-emerald-400 font-mono">0.0 V</span></div></div>
+                                <div class="bg-slate-900 p-3.5 rounded-lg border border-slate-800">
+                                    <div class="flex justify-between text-xs mb-1.5"><span class="text-slate-400">Eficiencia Recirculación Agua:</span><span id="p-ef-agua" class="font-bold text-cyan-400 font-mono">0%</span></div>
+                                    <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden"><div id="bar-agua" class="bg-cyan-500 h-2 rounded-full transition-all" style="width: 75%"></div></div>
+                                </div>
+                            </div>
+                            <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-800 flex flex-col">
+                                <h4 class="text-xs font-semibold text-slate-300 mb-2">Balance Métrico por Tonelada Tratada</h4>
+                                <div class="relative flex-grow h-56"><canvas id="chart-procesos"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3 -->
+                    <div id="tab-riesgos" class="tab-content hidden space-y-6">
+                        <div class="bg-cardbg p-5 rounded-xl border border-slate-800 space-y-4">
+                            <h4 class="text-sm font-bold text-slate-200 uppercase tracking-wider">Matriz de Severidad x Probabilidad (PIS) & Mitigación Social</h4>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs border-collapse">
+                                    <thead class="bg-slate-900 text-slate-400 uppercase font-mono">
+                                        <tr><th class="p-2.5">Grupo</th><th class="p-2.5">Aspecto / Indicador</th><th class="p-2.5 text-center">Sev</th><th class="p-2.5 text-center">Prob</th><th class="p-2.5 text-center">PIS</th><th class="p-2.5">Mitigación</th><th class="p-2.5">Responsable</th></tr>
+                                    </thead>
+                                    <tbody id="tabla-matriz-social-body" class="divide-y divide-slate-800 text-slate-300"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-800"><div class="relative h-56"><canvas id="chart-radar-riesgos"></canvas></div></div>
+                    </div>
+
+                    <!-- TAB 4 -->
+                    <div id="tab-comparacion" class="tab-content hidden space-y-6">
+                        <div class="bg-cardbg p-5 rounded-xl border border-slate-800 space-y-4">
+                            <div class="flex flex-wrap justify-between items-center gap-2">
+                                <h4 class="text-sm font-bold text-slate-200 uppercase tracking-wider">Evaluación Comparativa: BioElectroTor vs. Convencional</h4>
+                                <div id="badge-global-rendimiento" class="px-3 py-1 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono text-xs font-bold">Desempeño Global: +0%</div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs border-collapse">
+                                    <thead class="bg-slate-900 text-slate-400 uppercase font-mono">
+                                        <tr><th class="p-2.5">Métrica / Variable</th><th class="p-2.5 text-center">Convencional</th><th class="p-2.5 text-center text-cyan-400">BioElectroTor</th><th class="p-2.5 text-center">Variación</th><th class="p-2.5">Impacto Tecnológico</th></tr>
+                                    </thead>
+                                    <tbody id="tabla-comparacion-body" class="divide-y divide-slate-800 text-slate-300"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla Catastro -->
+            <div class="bg-cardbg rounded-xl border border-slate-800 p-5 shadow-lg">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center justify-between">
+                    <span><i class="fa-solid fa-table text-cyan-400 mr-2"></i> Catastro Depósitos de Relaves Chile</span>
+                    <span id="catastro-count" class="text-xs text-slate-400">Mostrando registros...</span>
+                </h3>
+                <div class="overflow-x-auto max-h-80">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="sticky top-0 bg-slate-900 text-slate-400 border-b border-slate-800 z-10">
+                            <tr>
+                                <th class="p-2.5">ID</th>
+                                <th class="p-2.5">Nombre</th>
+                                <th class="p-2.5">Región</th>
+                                <th class="p-2.5">Tipología</th>
+                                <th class="p-2.5">Riesgo</th>
+                                <th class="p-2.5">Tonelaje (Mt)</th>
+                                <th class="p-2.5">Ley Cu (%)</th>
+                                <th class="p-2.5">CO₂ (kg/t)</th>
+                                <th class="p-2.5 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-catastro-body" class="divide-y divide-slate-800 text-slate-300"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Agregar -->
+    <div id="modal-agregar" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 items-center justify-center hidden p-4">
+        <div class="bg-cardbg border border-slate-700 rounded-xl p-6 w-full max-w-lg shadow-2xl relative">
+            <button id="btn-close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2"><i class="fa-solid fa-plus-circle text-emerald-400"></i> Registrar Nuevo Depósito de Relave</h3>
+            <form id="form-nuevo-relave" class="space-y-3 text-xs">
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-slate-400 mb-1">ID Catastro</label><input type="text" id="add-id" required placeholder="REL-005" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                    <div><label class="block text-slate-400 mb-1">Nombre Depósito</label><input type="text" id="add-nombre" required placeholder="Relave El Carmen" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="block text-slate-400 mb-1">Región</label><input type="text" id="add-region" required placeholder="Antofagasta" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                    <div><label class="block text-slate-400 mb-1">Tipología</label>
+                        <select id="add-tipologia" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100">
+                            <option value="Tranque">Tranque</option><option value="Embalse">Embalse</option><option value="Pasta">Pasta</option><option value="Filtrado">Filtrado</option>
+                        </select>
+                    </div>
+                    <div><label class="block text-slate-400 mb-1">Riesgo Estructural</label>
+                        <select id="add-riesgo" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100">
+                            <option value="Bajo">Bajo</option><option value="Medio">Medio</option><option value="Alto">Alto</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="block text-slate-400 mb-1">Tonelaje (Mt)</label><input type="number" id="add-tonelaje" step="0.1" required value="150.0" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                    <div><label class="block text-slate-400 mb-1">% Sólidos (Cp)</label><input type="number" id="add-solidos" step="0.1" required value="65.0" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                    <div><label class="block text-slate-400 mb-1">Densidad (t/m³)</label><input type="number" id="add-densidad" step="0.01" required value="1.65" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div><label class="block text-slate-400 mb-1">Ley Cu (%)</label><input type="number" id="add-ley-cu" step="0.01" required value="0.25" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                    <div><label class="block text-slate-400 mb-1">Ley Fe (%)</label><input type="number" id="add-ley-fe" step="0.1" required value="12.0" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                    <div><label class="block text-slate-400 mb-1">Ley Au (g/t)</label><input type="number" id="add-ley-au" step="0.01" required value="0.10" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-slate-400 mb-1">Energía Base (kWh/t)</label><input type="number" id="add-energia" step="0.1" required value="14.0" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                    <div><label class="block text-slate-400 mb-1">Comunidades</label><input type="text" id="add-comunidades" required value="Comunidad Local" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-slate-100"></div>
+                </div>
+                <div class="pt-3 flex justify-end gap-2 border-t border-slate-800">
+                    <button type="button" id="btn-cancel-modal" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium shadow">Guardar Relave</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Template PDF -->
+    <div id="pdf-report-template" class="hidden bg-white text-slate-900 p-8 font-sans max-w-2xl mx-auto space-y-6">
+        <div class="border-b-2 border-slate-800 pb-4 flex justify-between items-center">
+            <div><h1 class="text-2xl font-bold">BioElectroTor Capstone Project</h1><p class="text-sm text-slate-600">Informe Ejecutivo</p></div>
+            <div class="text-right text-xs text-slate-500"><p>Fecha: <span id="pdf-date"></span></p><p>UAI</p></div>
+        </div>
+        <div class="bg-slate-100 p-4 rounded border text-xs grid grid-cols-2 gap-4">
+            <div><p class="font-bold">Depósito:</p><p id="pdf-relave-nombre" class="text-sm font-semibold"></p><p class="font-bold mt-2">Ubicación:</p><p id="pdf-relave-region"></p></div>
+            <div><p class="font-bold">Tonelaje:</p><p id="pdf-relave-tonelaje"></p><p class="font-bold mt-2">Tipología:</p><p id="pdf-relave-tipo"></p></div>
+        </div>
+        <div class="space-y-4 text-xs">
+            <h3 class="text-sm font-bold border-b pb-1 text-cyan-800">1. Minas & Caracterización</h3><p id="pdf-minas-text" class="text-slate-700"></p>
+            <h3 class="text-sm font-bold border-b pb-1 text-cyan-800">2. Procesos BioElectroTor</h3><p id="pdf-procesos-text" class="text-slate-700"></p>
+            <h3 class="text-sm font-bold border-b pb-1 text-cyan-800">3. Matriz Social PIS</h3><p id="pdf-social-text" class="text-slate-700"></p>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/chart-config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
