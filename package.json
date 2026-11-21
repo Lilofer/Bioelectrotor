@@ -1,4 +1,14 @@
 {
+  "name": "bioelectrotor",
+  "version": "3.0.0",
+  "description": "Plataforma Interdisciplinaria de Evaluación Geo-Electroquímica y Matriz Social de Relaves",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "express": "^5.3.0"
   }
